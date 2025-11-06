@@ -145,13 +145,29 @@
         }
 
         #nav-buttons {
+            position: relative;
             display: flex;
-            justify-content: space-between;
+            justify-content: center; /* center content while buttons are absolutely positioned */
             padding: 25px;
             border-top: 1px solid var(--border-color);
             background-color: #fafafa;
         }
         
+        /* Keep Previous/Next fixed within the nav area so Next never shifts left */
+        #prev-btn {
+            position: absolute;
+            left: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        #next-btn {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
         .nav-btn {
             font-size: 1.1rem;
             font-weight: bold;
@@ -236,13 +252,16 @@
             border-color: var(--primary-color);
         }
 
-        /* Responsive: place sidebar on top for small screens */
+        /* Mobile: keep two-column layout (quiz left, numbers right) to match desktop.
+           Allow horizontal scrolling if viewport is too narrow; reduce number size slightly. */
         @media (max-width: 760px) {
-            #app-wrapper { flex-direction: column; align-items: stretch; }
-            #sidebar { width: 100%; max-height: none; order: -1; }
-            /* show 3 numbers per row on small screens */
-            #number-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; overflow:auto; padding-bottom:6px; }
-            .sidebar-number { width: 44px; flex: 0 0 auto; }
+            #app-wrapper { flex-direction: row; align-items: flex-start; overflow-x: auto; }
+            /* let quiz take remaining space and be at least readable */
+            #quiz-container { flex: 1 0 320px; min-width: 320px; max-width: calc(100% - 72px); }
+            /* keep sidebar narrow on the right and scrollable vertically */
+            #sidebar { width: 72px; max-height: 86vh; position: relative; order: 2; }
+            #number-list { display: flex; flex-direction: column; gap: 6px; overflow:auto; }
+            .sidebar-number { width: 36px; height: 32px; font-size: 0.9rem; }
         }
 
         /* Sidebar number states */
