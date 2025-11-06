@@ -275,12 +275,52 @@
             border-color: var(--incorrect-color);
             color: var(--incorrect-color);
         }
+        /* QA view styles */
+    #qa-list .qa-item { padding: 10px; border-bottom: 1px solid #eee; }
+    #qa-list .qa-question { font-weight: 600; margin-bottom: 6px; }
+    #qa-list .qa-answer { color: var(--correct-color); font-weight: 700; margin-top:6px; }
+    /* Options inside QA view */
+    .qa-options { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+    .qa-option { padding:8px 10px; border-radius:8px; background:#f8f9fa; border:1px solid #ececec; color:var(--text-color); }
+    .qa-option.correct { background: var(--light-correct); border-color: var(--correct-color); color: var(--correct-color); font-weight:700; }
+    .qa-option.correct::after { content: "  (Answer)"; font-weight:600; color:var(--correct-color); }
+
+    /* QA view toggle active state */
+    .qa-toggle-active { box-shadow: inset 0 -3px 0 rgba(0,0,0,0.06); opacity: 0.95; }
     </style>
 </head>
 <body>
+    <!-- Entry screen: choose mode -->
+    <div id="entry-screen" style="width:100%;max-width:980px;">
+        <div style="background:#fff;padding:30px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06);text-align:center;">
+            <h1 style="margin:0 0 10px;">Intellectual Property Rights Quiz Hub</h1>
+            <p style="color:#666;margin:0 0 20px;">Choose an action</p>
+            <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+                <button id="start-quiz-btn" class="nav-btn" style="background:var(--primary-color);">Start Quiz</button>
+                <button id="read-qa-btn" class="nav-btn" style="background:#6c757d;">Read Questions &amp; Answers</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- QA view: read-only list of all questions and answers -->
+    <div id="qa-view" class="hidden" style="width:100%;max-width:1000px;">
+        <div style="background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.06);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:12px;flex-wrap:wrap;">
+                <h2 style="margin:0;">All Questions &amp; Answers</h2>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <!-- Questions Only button commented out per user request -->
+                    <!-- <button id="qa-show-questions" class="nav-btn" style="background:#6c757d;">Questions Only</button> -->
+                    <button id="qa-show-qa" class="nav-btn">Questions &amp; Answers</button>
+                    <button id="qa-to-quiz-btn" class="nav-btn">Go to Quiz</button>
+                    <button id="qa-home-btn" class="nav-btn" style="background:#6c757d;">Home</button>
+                </div>
+            </div>
+            <div id="qa-list" style="max-height:70vh;overflow:auto;padding-right:6px;"></div>
+        </div>
+    </div>
 
     <!-- App wrapper: sidebar + quiz -->
-    <div id="app-wrapper">
+    <div id="app-wrapper" style="display:none;">
         <aside id="sidebar" aria-label="Question navigation">
             <div id="number-list" role="list"></div>
         </aside>
@@ -289,7 +329,10 @@
             <div id="quiz-active-area">
             <div id="question-header">
                 <h2>INTRODUCTION TO IPR (HU1006-1)</h2>
-                <span id="question-counter"></span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span id="question-counter"></span>
+                    <button id="quiz-home-btn" class="nav-btn" style="background:#6c757d;padding:8px 12px;font-size:0.95rem;">Home</button>
+                </div>
             </div>
             
             <div id="quiz-body">
@@ -1190,10 +1233,105 @@
         restartBtn.addEventListener('click', restartQuiz);
 
         // --- INITIAL LOAD ---
-        // Render sidebar and load the very first question when the page opens
-        document.addEventListener('DOMContentLoaded', () => {
+        // Show entry screen on load; user chooses Start Quiz or Read Q&A
+        function showEntryScreen() {
+            document.getElementById('entry-screen').classList.remove('hidden');
+            document.getElementById('app-wrapper').style.display = 'none';
+            document.getElementById('qa-view').classList.add('hidden');
+        }
+
+        function startQuiz() {
+            document.getElementById('entry-screen').classList.add('hidden');
+            document.getElementById('qa-view').classList.add('hidden');
+            const app = document.getElementById('app-wrapper');
+            app.style.display = '';
             renderSidebar();
             loadQuiz();
+        }
+
+        /**
+         * Renders the QA view. If showAnswers is false, only questions are shown.
+         */
+        function renderQAView(showAnswers = true) {
+            document.getElementById('entry-screen').classList.add('hidden');
+            document.getElementById('app-wrapper').style.display = 'none';
+            const qa = document.getElementById('qa-view');
+            qa.classList.remove('hidden');
+            const qaList = document.getElementById('qa-list');
+            qaList.innerHTML = '';
+
+            quizData.forEach((q, idx) => {
+                const item = document.createElement('div');
+                item.className = 'qa-item';
+                const qEl = document.createElement('div');
+                qEl.className = 'qa-question';
+                qEl.innerText = (idx + 1) + '. ' + q.question;
+                item.appendChild(qEl);
+
+                if (showAnswers) {
+                    // Show all options and highlight the correct one
+                    const opts = document.createElement('div');
+                    opts.className = 'qa-options';
+                    q.options.forEach((optText, optIndex) => {
+                        const optEl = document.createElement('div');
+                        optEl.className = 'qa-option';
+                        optEl.innerText = optText;
+                        if (optIndex === q.answer) {
+                            optEl.classList.add('correct');
+                        }
+                        opts.appendChild(optEl);
+                    });
+                    item.appendChild(opts);
+                }
+
+                qaList.appendChild(item);
+            });
+
+            // Update toggle button active states (if present)
+            const btnQOnly = document.getElementById('qa-show-questions');
+            const btnQA = document.getElementById('qa-show-qa');
+            if (btnQOnly) {
+                btnQOnly.classList.toggle('qa-toggle-active', !showAnswers);
+            }
+            if (btnQA) {
+                btnQA.classList.toggle('qa-toggle-active', showAnswers);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showEntryScreen();
+
+            // wire entry buttons (guard in case elements are missing)
+            const startBtn = document.getElementById('start-quiz-btn');
+            const readBtn = document.getElementById('read-qa-btn');
+            const qaToQuiz = document.getElementById('qa-to-quiz-btn');
+            const qaHomeBtn = document.getElementById('qa-home-btn');
+            const qaShowQuestions = document.getElementById('qa-show-questions');
+            const qaShowQA = document.getElementById('qa-show-qa');
+            const quizHomeBtn = document.getElementById('quiz-home-btn');
+
+            if (startBtn) startBtn.addEventListener('click', startQuiz);
+            if (readBtn) readBtn.addEventListener('click', () => renderQAView(true));
+            if (qaToQuiz) qaToQuiz.addEventListener('click', startQuiz);
+            if (qaHomeBtn) qaHomeBtn.addEventListener('click', showEntryScreen);
+
+            // QA toggle buttons
+            /* Questions Only handler commented out per user request
+            if (qaShowQuestions) {
+                qaShowQuestions.addEventListener('click', () => renderQAView(false));
+            }
+            */
+            if (qaShowQA) {
+                qaShowQA.addEventListener('click', () => renderQAView(true));
+            }
+
+            // Quiz header Home button -> return to entry screen
+            if (quizHomeBtn) {
+                quizHomeBtn.addEventListener('click', showEntryScreen);
+            }
+
+            // Render initial sidebar but keep app hidden until quiz start
+            renderSidebar();
         });
 
     </script>
