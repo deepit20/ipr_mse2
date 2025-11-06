@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPR Practice Tool (130 Questions)</title>
+    
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --light-primary: #e6f2ff;
+            /* --- Colors for Feedback --- */
+            --correct-color: #28a745;   /* The strong green */
+            --light-correct: #eaf6ec;  /* The light green background */
+            --incorrect-color: #dc3545; /* The strong red */
+            --light-incorrect: #fdebee; /* The light red background */
+            /* --- End Feedback Colors --- */
+            --bg-color: #f4f7f6;
+            --card-bg: #ffffff;
+            --text-color: #212529;
+            --border-color: #ddd;
+            --disabled-color: #f1f1f1;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #quiz-container {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 700px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #question-header {
+            padding: 20px 25px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        #question-header h2 { margin: 0; font-size: 1.1rem; color: #555; }
+        #question-counter {
+            font-size: 0.9rem;
+            font-weight: 500;
+            background-color: var(--bg-color);
+            padding: 5px 10px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        #quiz-body { padding: 25px; }
+        #question-text {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin: 0 0 25px 0;
+            line-height: 1.5;
+        }
+        #options-container { display: flex; flex-direction: column; gap: 15px; }
+
+        .option {
+            display: block;
+            background-color: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: border-color 0.2s, background-color 0.2s;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+
+        .option:not(.disabled):hover {
+            border-color: var(--primary-color);
+            background-color: var(--light-primary);
+        }
+
+        /* This style is applied if you click the RIGHT answer */
+        .option.correct {
+            background-color: var(--light-correct);
+            border-color: var(--correct-color);
+            color: var(--correct-color);
+            font-weight: bold;
+        }
+
+        /* This style is applied to the WRONG answer you clicked */
+        .option.incorrect {
+            background-color: var(--light-incorrect);
+            border-color: var(--incorrect-color);
+            color: var(--incorrect-color);
+            font-weight: bold;
+        }
+        
+        /* This style is applied to the REAL answer when you pick the wrong one */
+        .option.show-correct {
+             background-color: var(--light-correct);
+             border-color: var(--correct-color);
+             color: var(--correct-color);
+             font-weight: bold;
+        }
+
+
+        /* Styles for after an answer is selected */
+        .option.disabled {
+            cursor: not-allowed;
+            background-color: var(--disabled-color);
+            border-color: var(--border-color);
+            color: #777;
+        }
+        .option.correct.disabled {
+            background-color: var(--light-correct);
+            border-color: var(--correct-color);
+            color: var(--correct-color);
+        }
+        .option.incorrect.disabled {
+             background-color: var(--light-incorrect);
+             border-color: var(--incorrect-color);
+             color: var(--incorrect-color);
+        }
+
+        /* Ensure the correct answer remains styled as correct when options are disabled
+           (this happens when a user clicks an answer and all options get the 'disabled' class). */
+        .option.show-correct.disabled {
+            background-color: var(--light-correct);
+            border-color: var(--correct-color);
+            color: var(--correct-color);
+            font-weight: bold;
+        }
+
+        #nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            padding: 25px;
+            border-top: 1px solid var(--border-color);
+            background-color: #fafafa;
+        }
+        
+        .nav-btn {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+        
+        .nav-btn:hover { background-color: #0056b3; }
+        .nav-btn.hidden { opacity: 0; pointer-events: none; }
+
+        /* Final results screen styles */
+        #results-container {
+            text-align: center;
+            padding: 40px 25px;
+        }
+        #results-container h2 { font-size: 2rem; margin-bottom: 20px; }
+        #score-text { font-size: 1.5rem; margin-bottom: 30px; }
+        #restart-btn {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: var(--primary-color);
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #restart-btn:hover { background-color: #0056b3; }
+        .hidden { display: none; }
+        /* App layout: sidebar + quiz */
+        #app-wrapper {
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 980px;
+            box-sizing: border-box;
+        }
+
+        /* Sidebar (placed to the right) */
+        #sidebar {
+            width: 76px;
+            max-height: 76vh;
+            overflow: auto;
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            order: 2; /* ensure it appears on the right */
+        }
+
+        #number-list { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+
+        .sidebar-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 36px;
+            border-radius: 8px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            cursor: pointer;
+            font-weight: 600;
+            user-select: none;
+            transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+        }
+
+        .sidebar-number:hover { background: var(--light-primary); border-color: var(--primary-color); }
+
+        .sidebar-number.active {
+            background: var(--primary-color);
+            color: #fff;
+            border-color: var(--primary-color);
+        }
+
+        /* Responsive: place sidebar on top for small screens */
+        @media (max-width: 760px) {
+            #app-wrapper { flex-direction: column; align-items: stretch; }
+            #sidebar { width: 100%; max-height: none; order: -1; }
+            /* show 3 numbers per row on small screens */
+            #number-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; overflow:auto; padding-bottom:6px; }
+            .sidebar-number { width: 44px; flex: 0 0 auto; }
+        }
+
+        /* Sidebar number states */
+        .sidebar-number.answered {
+            background: var(--light-correct);
+            border-color: var(--correct-color);
+            color: var(--correct-color);
+        }
+        .sidebar-number.wrong {
+            background: var(--light-incorrect);
+            border-color: var(--incorrect-color);
+            color: var(--incorrect-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- App wrapper: sidebar + quiz -->
+    <div id="app-wrapper">
+        <aside id="sidebar" aria-label="Question navigation">
+            <div id="number-list" role="list"></div>
+        </aside>
+
+        <div id="quiz-container">
+            <div id="quiz-active-area">
+            <div id="question-header">
+                <h2>INTRODUCTION TO IPR (HU1006-1)</h2>
+                <span id="question-counter"></span>
+            </div>
+            
+            <div id="quiz-body">
+                <p id="question-text"></p>
+                
+                <div id="options-container">
+                    </div>
+            </div>
+            
+            <div id="nav-buttons">
+                <button id="prev-btn" class="nav-btn">Previous</button>
+                <button id="next-btn" class="nav-btn">Next</button>
+            </div>
+            </div>
+            
+                <div id="results-container" class="hidden">
+                <h2>Quiz Complete!</h2>
+                <p id="score-text">You scored 0 out of 0</p>
+                <p id="details-text"></p>
+                <button id="restart-btn">Try Again</button>
+            </div>
+    </div>
+
+    <script>
+        // --- 1. QUIZ DATA ---
+        // All 130 questions
+        const quizData = [
+            {
+                question: "What is the origin of the word 'Patent'?",
+                options: ["French word 'Patente'", "Greek word 'Patentas'", "Latin word 'Patene'", "Old English word 'Pætent'"],
+                answer: 2
+            },
+            {
+                question: "What does the word 'Patene' mean in Latin?",
+                options: ["To protect", "To open", "To invent", "To disclose"],
+                answer: 1
+            },
+            {
+                question: "What is the primary purpose of Patent System?",
+                options: ["To promote technological innovation and transfer", "To keep inventions secret", "To limit the use of inventions", "To grant exclusive rights to the inventor"],
+                answer: 0
+            },
+            {
+                question: "What type of right is a patent?",
+                options: ["Global", "International", "Territorial", "Universal"],
+                answer: 2
+            },
+            {
+                question: "Which of the following is NOT a feature of a patent right?",
+                options: ["It can be enforced only in the country where it is granted.", "It is granted for an unlimited period.", "It is territorial in nature", "It provides exclusivity to the patent holder."],
+                answer: 1
+            },
+            {
+                question: "What happens to a patented invention after the patent expires?",
+                options: ["It becomes open to the public for free use", "It remains the property of the patent holder", "It can only be used with the government’s permission", "It is automatically renewed for another 20 years"],
+                answer: 0
+            },
+            {
+                question: "Which of the following cannot be patented?",
+                options: ["A new and useful machine", "A process to improve a known apparatus", "A new substance produced by manufacture", "Aesthetic creations"],
+                answer: 3
+            },
+            {
+                question: "In which of the following cases is a patent not advisable?",
+                options: ["When there is a high market potential", "When the invention aligns with business strategy", "When the invention is easy to reverse engineer", "When investors are interested in the invention"],
+                answer: 2
+            },
+            {
+                question: "Who typically owns the rights to a patent in the case of an employee invention?",
+                options: ["The employer", "The employee", "Both the employee and employer jointly", "The government"],
+                answer: 0
+            },
+            {
+                question: "What does 'non-obviousness' in a patent requirement mean?",
+                options: ["The invention is simple to understand", "The invention is hidden from public view", "The invention is not easily deduced by someone skilled in the field", "The invention is legally protected"],
+                answer: 2
+            },
+            {
+                question: "What is a key requirement for an invention to be considered 'new' or 'novel'?",
+                options: ["It must be based on existing technology", "It must not be part of the prior art", "It must have a practical application", "It must be easy to understand"],
+                answer: 1
+            },
+            {
+                question: "What is meant by 'capable of industrial application'?",
+                options: ["The invention must only be used in manufacturing", "The invention must be aesthetically pleasing", "The invention must be theoretical", "The invention must be useful and provide a practical benefit"],
+                answer: 3
+            },
+            {
+                question: "Which of the following is NOT an example of patentable subject matter?",
+                options: ["A new machine", "A scientific theory", "A new chemical process", "A new method of manufacture"],
+                answer: 1
+            },
+            {
+                question: "Which factor is crucial in deciding whether to file a patent application?",
+                options: ["The cost of the application", "The inventor's personal preferences", "The probability of obtaining commercially useful protection", "The ease of drafting the application"],
+                answer: 2
+            },
+            {
+                question: "Which of the following is excluded from patentability according to most national laws?",
+                options: ["New and useful products", "Discoveries of natural substances", "Inventive processes", "Chemical compositions"],
+                answer: 1
+            },
+            {
+                question: "What is the main benefit of disclosing an invention through the patent system?",
+                options: ["Keeping the invention secret", "Gaining legal protection and potential financial returns", "Avoiding the need for commercialization", "Transferring ownership to the government"],
+                answer: 1
+            },
+            {
+                question: "What is the consequence of not paying the required maintenance fees for a patent?",
+                options: ["The patent is automatically renewed", "The patent expires", "The patent is transferred to the government", "The patent is reassigned to another inventor"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is an advantage of a strong patent portfolio?",
+                options: ["It reduces competition", "It hinders technological progress", "It enhances the company's economic health", "It increases the cost of innovation"],
+                answer: 2
+            },
+            {
+                question: "Who is considered the inventor in the context of a patent application?",
+                options: ["The person who conceived the invention", "The company that funded the research", "The person who filed the patent application", "The government authority granting the patent"],
+                answer: 0
+            },
+            {
+                question: "What is 'prior art' in the context of patent law?",
+                options: ["Artistic work related to the invention", "All relevant technical knowledge available to the public before the filing date", "Previous patents filed by the same inventor", "Any invention made in the same field"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is a possible alternative to filing a patent application?",
+                options: ["Keeping the invention as a trade secret", "Publicly disclosing the invention", "Filing a copyright application instead", "Assigning the invention to another inventor"],
+                answer: 0
+            },
+            {
+                question: "What is the significance of the 'disclosure requirement' in a patent application?",
+                options: ["It ensures the invention is kept secret", "It allows others to replicate the invention", "It provides enough detail for someone skilled in the field to carry out the invention", "It limits the scope of the patent"],
+                answer: 2
+            },
+            {
+                question: "What is the effect of joint ownership on a patent?",
+                options: ["One co-owner can license the patent without the consent of others", "Each co-owner must consent to any licensing or enforcement of the patent", "The patent is automatically revoked", "The government takes over ownership"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is NOT typically covered under patent law?",
+                options: ["A method of performing a mental act", "A novel chemical composition", "A machine used in agriculture", "A process for manufacturing a new product"],
+                answer: 0
+            },
+            {
+                question: "In most countries, patents are granted to which of the following?",
+                options: ["The company funding the research", "The first inventor", "The government", "The first person to file a patent application"],
+                answer: 3
+            },
+            {
+                question: "What is an Ordinary Application?",
+                options: ["A patent application claiming priority from another country", "A patent application with multiple inventions", "A patent application without claiming priority from any other application", "A patent application for a provisional patent"],
+                answer: 2
+            },
+            {
+                question: "What is a Convention Application?",
+                options: ["An application claiming priority from a previously filed application in a non-convention country", "An application for a new invention without priority", "An application for minor modifications of an existing patent", "An application claiming priority from a previously filed application in a convention country"],
+                answer: 3
+            },
+            {
+                question: "What is required when filing a Convention Application in India?",
+                options: ["Only a complete specification", "Only a provisional specification", "A priority document and its English translation, if required", "A detailed technical report"],
+                answer: 2
+            },
+            {
+                question: "What does PCT stand for?",
+                options: ["Patent Convention Treaty", "Patent Cooperation Treaty", "Priority Country Treaty", "Patent Cooperation Transaction"],
+                answer: 1
+            },
+            {
+                question: "How many countries can a PCT International Application are validated in?",
+                options: ["Up to 100 countries", "Up to 142 countries", "Up to 120 countries", "Up to 160 countries"],
+                answer: 1
+            },
+            {
+                question: "What is the main advantage of filing a PCT International Application?",
+                options: ["Faster patent processing", "Single international application seeking protection in multiple countries", "Immediate grant of a global patent", "Exemption from national phase entry"],
+                answer: 1
+            },
+            {
+                question: "What is provided by a PCT International Search Report?",
+                options: ["Legal status of the invention", "Commercial viability of the invention", "Final grant of the patent", "Prior art citations and assessment of novelty"],
+                answer: 3
+            },
+            {
+                question: "What happens if the applicant does not enter the national phase within the prescribed time limit?",
+                options: ["The international application becomes void", "The application is transferred to another country", "The patent is granted automatically", "The application is put on hold indefinitely"],
+                answer: 0
+            },
+            {
+                question: "What is a Patent of Addition?",
+                options: ["A patent for a completely new invention", "A patent for a similar invention filed in another country", "A patent for an improvement or modification of an existing patent", "A patent for a group of related inventions"],
+                answer: 2
+            },
+            {
+                question: "When does a Patent of Addition expire?",
+                options: ["When the main patent expires", "20 years after filing", "10 years after filing", "After the inventor's death"],
+                answer: 0
+            },
+            {
+                question: "What is a Divisional Application?",
+                options: ["An application divided out of an existing application claiming more than one invention", "An application for the same invention in multiple countries", "An application for patent protection in a specific industry", "An application for a completely new invention"],
+                answer: 0
+            },
+            {
+                question: "What is the priority date for Divisional Applications?",
+                options: ["The date of filing of the divisional application", "The same as the parent application's priority date", "The date of publication of the main patent", "The date of grant of the main patent"],
+                answer: 1
+            },
+            {
+                question: "What is a Patent Specification?",
+                options: ["A document describing the invention and setting out the scope of protection", "A document listing the countries where the patent is valid", "A legal contract between the inventor and the patent office", "A summary of patent laws"],
+                answer: 0
+            },
+            {
+                question: "Which document filed to establish only the earliest ownership of an invention?",
+                options: ["National Phase Application", "Patent Cooperation Treaty", "Complete Specification", "Provisional Specification"],
+                answer: 3
+            },
+            {
+                question: "What must be filed within 12 months of a Provisional Specification to obtain a patent?",
+                options: ["Another Provisional Specification", "A Complete Specification", "A Convention Application", "A Patent of Addition"],
+                answer: 1
+            },
+            {
+                question: "What is the significance of the Complete Specification?",
+                options: ["It grants the patent automatically", "It describes the invention in detail, enabling others to replicate it", "It provides an abstract of the invention", "It is used only in international patent applications"],
+                answer: 1
+            },
+            {
+                question: "What part of the Complete Specification defines the monopoly right of the patentee?",
+                options: ["Title", "Claim", "Abstract", "Background of the Invention"],
+                answer: 1
+            },
+            {
+                question: "Which section of the Indian Patents Act deals with Provisional and Complete Specification?",
+                options: ["Section 8", "Section 10", "Section 9", "Section 11"],
+                answer: 2
+            },
+            {
+                question: "What is an Abstract in a Complete Specification?",
+                options: ["A legal clause defining the scope of the patent", "A brief summary of the invention within 150 words", "A detailed description of the invention", "A list of prior art references"],
+                answer: 1
+            },
+            {
+                question: "Who is entitled to apply for a patent in the National Filing Procedure?",
+                options: ["Any person who is an inventor", "Any person who purchases the invention", "Any person who is a true and first inventor or their assignee or legal representative", "Any person who works in the Patent Office"],
+                answer: 2
+            },
+            {
+                question: "What is the maximum period allowed for filing the complete specification after the provisional specification?",
+                options: ["6 months", "12 months", "18 months", "24 months"],
+                answer: 1
+            },
+            {
+                question: "When is a patent application published under the National Filing Procedure?",
+                options: ["Immediately after filing", "After 12 months from the filing date", "After 18 months from the filing date or priority date, whichever is earlier", "After 24 months from the filing date"],
+                answer: 2
+            },
+            {
+                question: "What happens if the Request for Examination is not made within the prescribed period?",
+                options: ["The patent is automatically granted", "The application is treated as withdrawn", "The applicant is fined", "The application is published without examination"],
+                answer: 1
+            },
+            {
+                question: "What is the purpose of the International Search Report (ISR) in the PCT filing procedure?",
+                options: ["To provide a list of prior art documents relevant to the invention", "To grant the patent in all PCT member countries", "To determine the renewal fee for the patent", "To translate the patent application into different languages"],
+                answer: 0
+            },
+            {
+                question: "Which of the following documents analyzes the potential patentability of an invention in the PCT filing procedure?",
+                options: ["International Preliminary Examination Report (IPER)", "Patent Grant Report (PGR)", "Written Opinion of the International Searching Authority (ISA)", "PCT Filing Certificate"],
+                answer: 2
+            },
+            {
+                question: "How long is the additional period provided by the PCT on top of the 12 months priority period?",
+                options: ["6 months", "12 months", "18 months", "24 months"],
+                answer: 2
+            },
+            {
+                question: "What does a single PCT application provide in terms of legal effect?",
+                options: ["Legal effect in all PCT member countries", "Legal effect in the country of filing only", "No legal effect until the patent is granted", "Legal effect in a single country of the applicant’s choice"],
+                answer: 0
+            },
+            {
+                question: "What is the first major step in the patent procedure?",
+                options: ["Examination of the patent", "Opposition to the patent", "Application for the patent", "Grant and sealing of the patent"],
+                answer: 2
+            },
+            {
+                question: "Who can file an application for a patent under the Indian Patent Act, 1970?",
+                options: ["Any person with an idea", "The true and first inventor or their legal representative", "Only legal entities", "Any employee of a company"],
+                answer: 1
+            },
+            {
+                question: "Where is the publication of a patent application notified?",
+                options: ["In a local newspaper", "On the company’s website", "In the Official Gazette or Patent Office Journals", "In a scientific journal"],
+                answer: 2
+            },
+            {
+                question: "What happens if no request for examination is made within the prescribed period?",
+                options: ["The patent is automatically granted", "The application is treated as withdrawn", "The patent is published without examination", "The applicant is fined"],
+                answer: 1
+            },
+            {
+                question: "Within how many months must the First Examination Report (FER) be responded to by the applicant?",
+                options: ["3 months", "6 months", "9 months", "12 months"],
+                answer: 1
+            },
+            {
+                question: "What is the maximum period within which a request for examination must be filed from the date of priority or filing?",
+                options: ["24 months", "36 months", "48 months", "60 months"],
+                answer: 2
+            },
+            {
+                question: "Who can file a pre-grant opposition to a patent?",
+                options: ["Only the inventor", "Any interested person", "Only the government", "Only the patent examiner"],
+                answer: 1
+            },
+            {
+                question: "Within how many months from the advertisement date can a pre-grant opposition be filed?",
+                options: ["2 months", "3 months", "4 months", "6 months"],
+                answer: 2
+            },
+            {
+                question: "What must be included in a post-grant opposition notice?",
+                options: ["A simple objection", "Written statement and evidence", "Only the applicant’s name", "Only the patent number"],
+                answer: 1
+            },
+            {
+                question: "Under which section of the Act is the grant and sealing of a patent handled?",
+                options: ["Section 25", "Section 9", "Section 43", "Section 11A"],
+                answer: 2
+            },
+            {
+                question: "When is the renewal fee is payable after the grant of patent?",
+                options: ["First year", "Second year", "Third year", "Fifth year"],
+                answer: 2
+            },
+            {
+                question: "What is the maximum period for applying to restore a lapsed patent due to non-payment of renewal fees?",
+                options: ["6 months", "12 months", "18 months", "24 months"],
+                answer: 2
+            },
+            {
+                question: "Which system is employed in patent law that prioritizes the first person to file a patent application?",
+                options: ["First to invent", "First to file", "First to publish", "First to market"],
+                answer: 1
+            },
+            {
+                question: "What could jeopardize the chance of obtaining a patent?",
+                options: ["Filing the application early", "Keeping the invention secret", "Publishing the invention before applying for a patent", "Consulting a patent agent"],
+                answer: 2
+            },
+            {
+                question: "What is advisable for inventors to file as soon as their idea takes a definite shape?",
+                options: ["Complete Specification", "Provisional Specification", "Final Examination Report", "Renewal Application"],
+                answer: 1
+            },
+            {
+                question: "Which form is used for requesting early publication of a patent application?",
+                options: ["Form 1", "Form 5", "Form 9", "Form 18"],
+                answer: 2
+            },
+            {
+                question: "Which document must be submitted if the priority date is claimed in a convention application?",
+                options: ["Declaration of inventorship", "Priority document", "Abstract of the invention", "Power of attorney"],
+                answer: 1
+            },
+            {
+                question: "How many copies of the application form are required for filing a patent application?",
+                options: ["One", "Two", "Three", "Four"],
+                answer: 2
+            },
+            {
+                question: "What is the penalty for not meeting the objections in the First Examination Report (FER) within 12 months?",
+                options: ["Fine is imposed", "Patent is granted automatically", "The application is deemed abandoned", "The application is sent for re-examination"],
+                answer: 2
+            },
+            {
+                question: "What section of the Patent Act outlines the grounds for opposition?",
+                options: ["Section 7", "Section 9", "Section 25", "Section 43"],
+                answer: 2
+            },
+            {
+                question: "Which form is required for filing a post-grant opposition?",
+                options: ["Form 7", "Form 18", "Form 5", "Form 9"],
+                answer: 0
+            },
+            {
+                question: "What is one common mistake made by inventors that could harm their patent application?",
+                options: ["Filing the patent too early", "Filing without a power of attorney", "Publicly disclosing the invention before filing for a patent", "Hiring a patent agent"],
+                answer: 2
+            },
+            {
+                question: "What is a key consideration when deciding where to patent an invention?",
+                options: ["Where the inventor's family lives", "Where the product is likely to be commercialized", "Where the inventor vacations", "Where the inventor's competitors are located"],
+                answer: 1
+            },
+            {
+                question: "Which route involves filing a patent application in each country individually?",
+                options: ["International route", "National route", "Regional route", "Global route"],
+                answer: 1
+            },
+            {
+                question: "What does licensing a patent involve?",
+                options: ["Selling the patent outright", "Granting permission to another party to use the patented invention", "Filing a patent in multiple countries", "Manufacturing the product yourself"],
+                answer: 1
+            },
+            {
+                question: "What is an advantage of licensing a patent?",
+                options: ["It reduces legal costs", "It provides an additional source of revenue", "It simplifies the patent process", "It limits the market reach of the invention"],
+                answer: 1
+            },
+            {
+                question: "What is an exclusive license?",
+                options: ["Multiple licensees share the rights", "A single licensee has the right to use the patented technology", "The patent owner retains full rights", "The patent owner cannot use the technology"],
+                answer: 1
+            },
+            {
+                question: "What is cross-licensing?",
+                options: ["Two competitors exchange rights to each other's patents", "Licensing to multiple companies", "Selling the patent to the highest bidder", "Licensing without any fees"],
+                answer: 0
+            },
+            {
+                question: "What is a compulsory license?",
+                options: ["A government-mandated license when public interest is involved", "A license granted by the patent owner under pressure", "A license that is automatically granted after three years", "A license that is required in every country"],
+                answer: 0
+            },
+            {
+                question: "When can a compulsory license be terminated under Indian law?",
+                options: ["Only after the patent expires", "If the circumstances that led to its grant no longer exist", "When the patent owner demands it", "After five years of the license being in effect"],
+                answer: 1
+            },
+            {
+                question: "What is considered an infringement of a patent?",
+                options: ["Unauthorized use of the patented invention", "Using the invention with the owner's consent", "Improving upon the patented invention", "Filing a patent in another. country"],
+                answer: 0
+            },
+            {
+                question: "What must an inventor provide to a patent attorney for effective patent drafting?",
+                options: ["Only the successful parts of the invention", "Complete details of the invention, including failures", "Only the final product", "A summary of the invention"],
+                answer: 1
+            },
+            {
+                question: "What does Section 107A of the Indian Patent Act state?",
+                options: ["Certain acts related to development and submission of information are not considered infringement", "Importing patented products is illegal", "All uses of a patented invention are considered infringement", "Infringement can only occur in the country of the patent holder"],
+                answer: 0
+            },
+            {
+                question: "What relief can a patentee seek in case of infringement under Indian law?",
+                options: ["Injunction and damages", "Patent revocation", "License cancellation", "Public apology from the infringer"],
+                answer: 0
+            },
+            {
+                question: "What is one advantage of arbitration in patent disputes?",
+                options: ["It is less formal and shorter than court proceedings", "It is always free of charge", "It allows public scrutiny", "It guarantees a favourable outcome for the patentee"],
+                answer: 0
+            },
+            {
+                question: "Why might a company choose to send a ‘cease and desist letter’?",
+                options: ["To inform the alleged infringer of a potential patent conflict", "To license the patent to the infringer", "To revoke the infringer's patent", "To initiate a criminal case"],
+                answer: 0
+            },
+            {
+                question: "What is the purpose of a ‘cease and desist letter’?",
+                options: ["To stop infringing activities", "To grant a license", "To terminate a patent", "To enforce a compulsory license"],
+                answer: 0
+            },
+            {
+                question: "Which organization provides services for alternative dispute resolution?",
+                options: ["World Trade Organization (WTO)", "World Intellectual Property Organization (WIPO)", "European Patent Office (EPO)", "International Monetary Fund (IMF)"],
+                answer: 1
+            },
+            {
+                question: "What is the role of the WIPO Arbitration and Mediation Centre?",
+                options: ["To file patents internationally", "To provide alternative dispute resolution services", "To enforce patent laws", "To draft patent agreements"],
+                answer: 1
+            },
+            {
+                question: "Which article of the TRIPS agreement provides for the right to information in infringement cases?",
+                options: ["Article 47", "Article 44", "Article 45", "Article 46"],
+                answer: 0
+            },
+            {
+                question: "What is the primary function of a trademark?",
+                options: ["To protect intellectual property", "To advertise a company", "To increase product prices", "To identify the source of goods or services"],
+                answer: 3
+            },
+            {
+                question: "Which of the following can be registered as a trademark in some countries?",
+                options: ["Shapes of products", "Personal names", "Generic terms", "Flags of nations"],
+                answer: 0
+            },
+            {
+                question: "Which of the following is NOT a characteristic of a trademark?",
+                options: ["It must be distinctive", "It should be descriptive of the product and its basic component/ingredients", "It should be easy to spell and pronounce", "It should be easy to register"],
+                answer: 1
+            },
+            {
+                question: "What is a service mark?",
+                options: ["A trademark used for products", "A mark used to distinguish services", "A certification mark", "A well-known mark"],
+                answer: 1
+            },
+            {
+                question: "What is the validity period of a registered trademark?",
+                options: ["5 years and renewable", "15 years and non-renewable", "10 years and renewable", "20 years and then expires"],
+                answer: 2
+            },
+            {
+                question: "Which type of mark is a coined or invented word with no intrinsic meaning?",
+                options: ["Descriptive mark", "Arbitrary mark", "Suggestive mark", "Fanciful mark"],
+                answer: 3
+            },
+            {
+                question: "Which of the following is NOT allowed for trademark registration in most jurisdictions?",
+                options: ["A three-dimensional shape", "A generic term", "A suggestive word", "A coined word"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is an example of an arbitrary mark?",
+                options: ["'Kodak' for cameras", "'Sunny' for heaters", "'Apple' for computers", "'Sweet' for chocolates"],
+                answer: 2
+            },
+            {
+                question: "What is a certification mark?",
+                options: ["A mark used to distinguish services", "A mark indicating compliance with standards", "A mark used by a specific group of enterprises", "A well-known mark"],
+                answer: 1
+            },
+            {
+                question: "Which of the following can be considered a non-traditional trademark?",
+                options: ["A word", "A logo", "A sound", "A phrase"],
+                answer: 2
+            },
+            {
+                question: "Which of the following is NOT a function of a trademark?",
+                options: ["Identifying the product's origin", "Guaranteeing the product's quality", "Advertising the product", "Reducing the cost of production"],
+                answer: 3
+            },
+            {
+                question: "Which of the following is NOT a reason for rejecting a trademark application?",
+                options: ["The mark is descriptive", "The mark is fanciful", "The mark is generic", "The mark is deceptive"],
+                answer: 1
+            },
+            {
+                question: "What is an example of a suggestive mark?",
+                options: ["'Kodak' for cameras", "'Apple' for computers", "'Sunny' for heaters", "'Sweet' for chocolates"],
+                answer: 2
+            },
+            {
+                question: "Which of the following is true about the registration of non-traditional trademarks?",
+                options: ["They are easy to graphically represent", "They are often difficult to register", "They are more valuable than traditional trademarks", "They are not recognized by most countries"],
+                answer: 1
+            },
+            {
+                question: "What must be authorized under Form TM-48 in the trademark registration process?",
+                options: ["The registration of the trademark", "The use of the trademark", "The appointment of an attorney or agent", "The payment of the registration fee"],
+                answer: 2
+            },
+            {
+                question: "What is copyright primarily available for?",
+                options: ["Ideas", "Original literary, dramatic, musical, artistic work", "Unpublished works", "Scientific discoveries"],
+                answer: 1
+            },
+            {
+                question: "Under the Indian Copyright Act, how long is the term of protection for literary works?",
+                options: ["50 years from the date of publication", "The author’s life plus 70 years", "The author’s life plus 60 years", "100 years after the author's death"],
+                answer: 2
+            },
+            {
+                question: "What does copyright protect?",
+                options: ["The idea itself", "The expression of an idea", "Methods and processes", "Scientific principles"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is included under the definition of a computer program in the Copyright Act?",
+                options: ["Hardware configurations", "Source codes and object codes", "Software installation manuals", "User interface designs"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is an example of moral rights under copyright?",
+                options: ["Right to sell the work", "Right to claim authorship", "Right to license the work", "Right to modify the work"],
+                answer: 1
+            },
+            {
+                question: "Which of the following categories is not protected by copyright?",
+                options: ["Titles and short phrases", "Dramatic works", "Musical works", "Pantomimes"],
+                answer: 0
+            },
+            {
+                question: "What is true about Public Domain software?",
+                options: ["It has strict copyright restrictions", "It allows free modification and distribution", "It requires a license for use", "It cannot be used commercially"],
+                answer: 1
+            },
+            {
+                question: "What is the primary difference between Freeware and Public Domain software?",
+                options: ["Freeware is not protected by copyright", "Freeware allows modification only with restrictions", "Public Domain software has no copyright protection", "Public Domain software requires payment for use"],
+                answer: 2
+            },
+            {
+                question: "Which software category explicitly allows reverse engineering (decompiling) without permission?",
+                options: ["Commercial Software", "Shareware", "Freeware", "Public Domain"],
+                answer: 2
+            },
+            {
+                question: "Under copyright law, what is an author’s 'right of integrity'?",
+                options: ["The right to modify the work", "The right to publish the work", "The right to prevent alteration of the work", "The right to sell the work"],
+                answer: 2
+            },
+            {
+                question: "What does industrial design primarily refer to?",
+                options: ["The technical aspects of a product", "The functional features of a product", "The ornamental or aesthetic aspects of a product", "The marketing strategy of a product"],
+                answer: 2
+            },
+            {
+                question: "Which of the following is not typically included in industrial design protection?",
+                options: ["The shape of a product", "The pattern of a product", "The technical function of a product", "The colour of a product"],
+                answer: 2
+            },
+            {
+                question: "Industrial design can be applied to which of the following products?",
+                options: ["Medical instruments", "Furniture", "Jewelry", "All of these"],
+                answer: 3
+            },
+            {
+                question: "Which feature of a design is considered a three-dimensional feature?",
+                options: ["Colour", "Pattern", "Shape", "Ornamentation"],
+                answer: 2
+            },
+            {
+                question: "What is required for a design to be considered 'new'?",
+                options: ["It must have been published in a magazine", "It must not have been made available to the public before the filing date", "It must be a copy of an existing design", "It must be patented"],
+                answer: 1
+            },
+            {
+                question: "Which of the following is a reason businesses invest in new and original designs?",
+                options: ["To reduce the cost of production", "To customize products for specific market segments", "To increase the number of employees", "To simplify the manufacturing process"],
+                answer: 1
+            },
+            {
+                question: "Which of the following cannot be protected as an industrial design?",
+                options: ["A new shape for a chair", "A book cover design", "A technical drawing of a machine", "A pattern on fabric"],
+                answer: 2
+            },
+            {
+                question: "How long does industrial design protection typically last?",
+                options: ["5 years", "10 years", "15 years", "20 years"],
+                answer: 1
+            },
+            {
+                question: "What is a common grace period for registering an industrial design after it has been made public?",
+                options: ["3 months", "6 months", "12 months", "18 months"],
+                answer: 1
+            },
+            {
+                question: "What does 'industrial design' not typically include?",
+                options: ["Product packaging", "Architectural structures", "Buildings and structures", "Furniture design"],
+                answer: 2
+            },
+            {
+                question: "What does the term 'get-up' of products refer to in industrial design?",
+                options: ["The technical features of a product", "The ornamental or aesthetic design of the product", "The packaging of the product", "The functionality of the product"],
+                answer: 1
+            },
+            {
+                question: "Which approach to protecting traditional knowledge emphasizes cultural heritage?",
+                options: ["Collective human rights", "Cultural heritage protection", "Use of existing intellectual property laws", "Commercial rights"],
+                answer: 1
+            },
+            {
+                question: "What does 'design protection' primarily allow a holder to do?",
+                options: ["Develop new technological features", "License or sell trademarks", "Obtain patents for scientific processes", "Control the aesthetic aspects of a product and prevent copying"],
+                answer: 3
+            }
+        ];
+
+
+        // --- 2. GET DOM ELEMENTS ---
+        const quizActiveArea = document.getElementById('quiz-active-area');
+        const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const numberList = document.getElementById('number-list');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const scoreText = document.getElementById('score-text');
+        const restartBtn = document.getElementById('restart-btn');
+        const questionCounter = document.getElementById('question-counter');
+
+        // --- 3. QUIZ STATE ---
+        let currentQuestionIndex = 0;
+        let userAnswers = new Array(quizData.length).fill(null);
+        let userScores = new Array(quizData.length).fill(0);
+
+
+        // --- 4. FUNCTIONS ---
+
+        /**
+         * Loads the current question and its options into the page.
+         */
+        function loadQuiz() {
+            const currentQuestion = quizData[currentQuestionIndex];
+            questionText.innerText = (currentQuestionIndex + 1) + ". " + currentQuestion.question;
+            questionCounter.innerText = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
+            optionsContainer.innerHTML = ''; // Clear old options
+            
+            const userAnswerIndex = userAnswers[currentQuestionIndex];
+            const hasAnswered = userAnswerIndex !== null;
+
+            // Create each option element
+            currentQuestion.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.classList.add('option');
+                optionElement.dataset.index = index; // Store its index
+                optionElement.innerText = option;
+                
+                // If this question was already answered, show the feedback
+                if (hasAnswered) {
+                    optionElement.classList.add('disabled');
+                    const correctIndex = currentQuestion.answer;
+                    
+                    if (index === correctIndex) {
+                        optionElement.classList.add('correct'); // Show correct answer
+                    } else if (index === userAnswerIndex) {
+                        optionElement.classList.add('incorrect'); // Show user's wrong answer
+                    }
+                }
+                
+                optionsContainer.appendChild(optionElement);
+            });
+            
+            updateNavButtons();
+            updateActiveSidebar();
+        }
+        
+        /**
+         * Shows/hides the Previous button and updates the Next/Submit button text.
+         */
+        function updateNavButtons() {
+            prevBtn.classList.toggle('hidden', currentQuestionIndex === 0);
+            nextBtn.innerText = (currentQuestionIndex === quizData.length - 1) ? 'Submit Quiz' : 'Next';
+        }
+        
+        /**
+         * Handles the logic when a user clicks an option.
+         */
+        function handleOptionClick(event) {
+            const clickedElement = event.target;
+            
+            // Only run if they clicked an option that isn't already disabled
+            if (!clickedElement.classList.contains('option') || clickedElement.classList.contains('disabled')) {
+                return;
+            }
+
+            const selectedIndex = parseInt(clickedElement.dataset.index);
+            const correctIndex = quizData[currentQuestionIndex].answer;
+            
+            // Store the answer and score (only the first time they answer)
+            if (userAnswers[currentQuestionIndex] === null) {
+                userAnswers[currentQuestionIndex] = selectedIndex;
+                if (selectedIndex === correctIndex) {
+                    userScores[currentQuestionIndex] = 1;
+                }
+            }
+            
+            // Disable all options
+            const allOptions = optionsContainer.querySelectorAll('.option');
+            allOptions.forEach(opt => {
+                opt.classList.add('disabled');
+            });
+
+            // Apply feedback styles
+            if (selectedIndex === correctIndex) {
+                // Correct: Turn clicked option green
+                clickedElement.classList.add('correct');
+            } else {
+                // Incorrect: Turn clicked option red
+                clickedElement.classList.add('incorrect');
+                // And find the correct option and turn it green
+                optionsContainer.querySelector(`[data-index='${correctIndex}']`).classList.add('show-correct');
+            }
+            // update sidebar status (mark answered/wrong)
+            updateSidebarStatus();
+        }
+
+        /**
+         * Renders the numbered sidebar (1..N) and attaches click handlers.
+         */
+        function renderSidebar() {
+            if (!numberList) return;
+            numberList.innerHTML = '';
+            for (let i = 0; i < quizData.length; i++) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'sidebar-number';
+                btn.dataset.index = i;
+                btn.innerText = (i + 1);
+                btn.addEventListener('click', () => {
+                    // Jump to selected question
+                    currentQuestionIndex = i;
+                    loadQuiz();
+                    // Ensure focus lands on question for keyboard users
+                    questionText.focus?.();
+                });
+                numberList.appendChild(btn);
+            }
+            updateActiveSidebar();
+            updateSidebarStatus();
+        }
+
+        function updateActiveSidebar() {
+            if (!numberList) return;
+            const items = numberList.querySelectorAll('.sidebar-number');
+            items.forEach(it => it.classList.remove('active'));
+            const active = numberList.querySelector(`[data-index='${currentQuestionIndex}']`);
+            if (active) active.classList.add('active');
+        }
+
+        function updateSidebarStatus() {
+            if (!numberList) return;
+            const items = numberList.querySelectorAll('.sidebar-number');
+            items.forEach(it => {
+                const idx = parseInt(it.dataset.index, 10);
+                it.classList.remove('answered', 'wrong');
+                const ua = userAnswers[idx];
+                if (ua === null) {
+                    // unanswered -> keep default
+                } else {
+                    const correct = quizData[idx].answer;
+                    if (ua === correct) it.classList.add('answered');
+                    else it.classList.add('wrong');
+                }
+            });
+        }
+
+        /**
+         * Hides the quiz and shows the final results.
+         */
+        function showResults() {
+            // Calculate final score
+            const finalScore = userScores.reduce((total, score) => total + score, 0);
+            
+            // Hide quiz
+            quizActiveArea.classList.add('hidden');
+            
+            // Show results
+            resultsContainer.classList.remove('hidden');
+            scoreText.innerText = `You scored ${finalScore} out of ${quizData.length}`;
+            // compute answered/unanswered/wrong
+            const answeredCount = userAnswers.filter(a => a !== null).length;
+            const unansweredCount = quizData.length - answeredCount;
+            const wrongCount = answeredCount - finalScore;
+            const details = document.getElementById('details-text');
+            if (details) {
+                details.innerText = `Answered: ${answeredCount} | Unanswered: ${unansweredCount} | Wrong: ${wrongCount}`;
+            }
+        }
+        
+        /**
+         * Resets all variables and restarts the quiz.
+         */
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            userAnswers = new Array(quizData.length).fill(null);
+            userScores = new Array(quizData.length).fill(0);
+            quizActiveArea.classList.remove('hidden');
+            resultsContainer.classList.add('hidden');
+            loadQuiz();
+        }
+
+        // --- 5. EVENT LISTENERS ---
+        
+        // Listen for clicks on the options
+        optionsContainer.addEventListener('click', handleOptionClick);
+        
+        // Listen for clicks on the "Next/Submit" button
+        nextBtn.addEventListener('click', () => {
+            if (currentQuestionIndex < quizData.length - 1) {
+                currentQuestionIndex++;
+                loadQuiz();
+            } else {
+                showResults();
+            }
+        });
+        
+        // Listen for clicks on the "Previous" button
+        prevBtn.addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuiz();
+            }
+        });
+        
+        // Listen for clicks on the "Restart" button
+        restartBtn.addEventListener('click', restartQuiz);
+
+        // --- INITIAL LOAD ---
+        // Render sidebar and load the very first question when the page opens
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSidebar();
+            loadQuiz();
+        });
+
+    </script>
+</body>
+</html>
